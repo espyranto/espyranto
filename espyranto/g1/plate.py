@@ -21,8 +21,20 @@ from ase.data import chemical_symbols
 
 class Plate:
     def __init__(self, directory, ncols=12):
-        '''Read the data in a plate DIRECTORY.
+        '''Read the data in a plate DIRECTORY of the form {A}col{B}row{tag}.
         NCOLS is the number of columns in the plate.
+
+        self.metadata is a dictionary containing a 'parameters' string and any
+        key=value pairs defined in it.
+
+        self.metalA, self.metalB are parsed from the directory name.
+        self.A contains the concentration of A in each well (indexed 0 to 95)
+        self.B contains the concentration of B in each well (indexed 0 to 95)
+        self.PS contains the concentration of photosensitizer in each well (indexed 0 to 95)
+
+        self.mmolH is an array of (rows, timesteps) converted
+        self.images is an array of (path, datetime) for each image
+
         '''
         if directory.endswith('/'):
             directory = directory[:-1]
@@ -33,6 +45,7 @@ class Plate:
         self.directory = directory
 
         self.ncols = ncols
+        # we calculate self.nrows after we know how many wells there are.
 
         ce = '|'.join(chemical_symbols)
 
@@ -43,33 +56,46 @@ class Plate:
         self.metalB = B
         self.tag = tag
 
+        f1 = os.path.join(base, directory, f'primary_data/{directory}data.xls')
+        f2 = os.path.join(base, directory, f'auxillary_data/{directory}mmolH.xls')
 
-        ef = pd.ExcelFile(os.path.join(base, directory, f'primary_data/{directory}data.xls'))
+        for f in [f1, f2]:
+            if not os.path.exists(f):
+                raise Exception(f'{f} not found')
+
+
+        ef = pd.ExcelFile(f1)
         data = ef.parse()
         self.metadata = {'parameters': '\n'.join([str(x) for x in data['Parameters'][~pd.isnull(data.Parameters)]])}
         for line in self.metadata['parameters'].split():
             if '=' in line:
-                print(line)
+                key, value = [x.strip() for x in line.split('=')]
                 self.metadata[key] = value
 
         self.columns = data['Pos Horz'].values # TODO rename to column
         self.rows = data['Pos Vert'].values  # TODO rename to row
+
+        self.nrows = len(self.rows) // ncols
 
         # TODO this may change later. the column headers are system specific.
         self.PS = data['Conc. PS (mM)']
         self.A = data[f'Conc. {A} (mM)'].values
         self.B = data[f'Conc. {B} (mM)'].values
 
-        # This is not consistent, and we do not use it, so we do not read it
-        # self.C = data[f'Conc. {C} (mM)'].values # TODO: column change name to C
+        # This is not consistently named, cannot be derived from the directory
+        # name, and we do not use it, so we do not read it
+        # self.C = data[f'Conc. {C} (mM)'].values
 
         # this is mmolH vs time in each well. Note the units of this are micromoles H2
-        mmolH_ef = pd.ExcelFile(os.path.join(base, directory, f'auxillary_data/{directory}mmolH.xls'))
+        mmolH_ef = pd.ExcelFile(f2)
         self.mmolH = mmolH_ef.parse(header=None).values
 
         # Array of images
         # This is not an ideal glob pattern, it could match too much.
         image_files = glob.glob(os.path.join(base, directory, f'images/{directory}A_y*.jpg'))
+        if not len(image_files) > 0:
+            raise Exception('No image files found')
+
         dates = [datetime.strptime(os.path.split(f)[-1],
                                    f'{directory}A_y%ym%md%dH%HM%MS%S.jpg')
                  for f in image_files]

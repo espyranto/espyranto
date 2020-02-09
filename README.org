@@ -1,1 +1,215 @@
 #+title: Espyranto
+
+* Installation
+
+#+BEGIN_SRC sh
+git clone git@github.com:espyranto/espyranto.git
+pip install -e espyranto
+#+END_SRC
+
+* Development
+
+We are currently working on "Generation 1" espyranto. This code is located in [[./espyranto/g1/]].
+
+This will have an a Plate class to read from a directory to get the compositions of the wells, and the kinetic data that Eric Lopato has derived from image analysis.
+
+* Generation 1 example usage
+
+This example assumes you have installed espyranto on your path.
+
+You have to set the timestep for the images. There is not currently a way to derive these that is complete. This timestep should be the amount of time the wells are illuminated between each image.
+
+Note, a simple way to get machine-readable key/value pairs in the metadata is to add cells in the Parameters column with contents like 'A = Pd'. This class will parse that into the metadata dictionary.
+
+#+BEGIN_SRC ipython :restart
+from espyranto.g1.plate import Plate
+
+%matplotlib inline
+import matplotlib.pyplot as plt
+
+p = Plate('../../../../../doe-data-science-h2/doe-data-science-h2-team/data/example-data/PdcolSnrow/')
+
+p.set_timestep(600)
+print(p)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out [1]:
+# output
+PdcolSnrow
+H2 Evo - Alloy Nanopart.
+2019-02-09 00:00:00
+Pd Columns Sn Rows
+In DMSO
+10:1 solvent to water
+TEOA
+Solution Volume (mL)
+0.45
+A=Pd
+B=Sn
+
+119 images were acquired.
+Start time: 2019-02-09 16:26:04
+End time: 2019-02-10 12:15:44
+mmolH data has shape: (96, 74)
+
+:end:
+
+Here we can access the 'A' element of the metadata because there is a cell containing 'A=Pd' in the Parameters column of the Excel spreadsheet.
+
+#+BEGIN_SRC ipython
+p.metadata['A']
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out [2]:
+# text/plain
+: 'Pd'
+:end:
+
+** Max functions
+
+#+BEGIN_SRC ipython
+p.maxh()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out [3]:
+# text/plain
+: (28, 37.48418383379452)
+:end:
+
+** Plots
+
+#+BEGIN_SRC ipython
+p.plot_mmolH(23)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out [4]:
+# text/plain
+: <Figure size 432x288 with 1 Axes>
+
+# image/png
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/35b3d9578271a8c4277c7b4b8d00ce465afedca8.png]]
+:end:
+
+#+BEGIN_SRC ipython
+p.plot_mmolH([1, 11])
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out [5]:
+# text/plain
+: <Figure size 432x288 with 1 Axes>
+
+# image/png
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/35b3d9578271a8c4277c7b4b8d00ce465afedca8.png]]
+:end:
+
+#+BEGIN_SRC ipython
+p.plot_mmolH_grid();
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out [6]:
+# text/plain
+: <Figure size 576x864 with 96 Axes>
+
+# image/png
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/64f6852a5c41e6fbd7ba64d9be053c3ac193518e.png]]
+:end:
+
+#+BEGIN_SRC ipython
+p.plot_mmolH_max()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out [7]:
+# text/plain
+: <Figure size 432x288 with 2 Axes>
+
+# image/png
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/988d29035a7d5528489dba7a2a891ebfda8a59ce.png]]
+:end:
+
+#+BEGIN_SRC ipython
+p.plot_mmolH_max_contourf()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out [8]:
+
+
+# text/plain
+: <Figure size 432x288 with 2 Axes>
+
+# image/png
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/585370d1dd2c022e1d58ab383ada6cc8eb82df3d.png]]
+:end:
+
+** See plates
+
+#+BEGIN_SRC ipython
+p.show_plate(20)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out [9]:
+
+
+# text/plain
+: <Figure size 432x288 with 1 Axes>
+
+# image/png
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/d9d8dd28ce7a7dc22bbc6760f163dfb561e819e3.png]]
+:end:
+
+#+BEGIN_SRC ipython
+p.show_plate(slice(0, -1, 20));
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out [10]:
+# text/plain
+: <Figure size 432x288 with 6 Axes>
+
+# image/png
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/3f4079e4901f11e2bdb4dbbcad3dc9cd03a57a44.png]]
+:end:
+
+** Movies
+
+#+BEGIN_SRC ipython
+p.movie_ffmpeg()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out [11]:
+# output
+Working ../../../../../doe-data-science-h2/doe-data-science-h2-team/data/example-data/PdcolSnrow/movie.mp4.
+
+:end:
+
+#+BEGIN_SRC ipython
+p.movie_imagemagick()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out [12]:
+# output
+Working on ../../../../../doe-data-science-h2/doe-data-science-h2-team/data/example-data/PdcolSnrow/movie.gif.
+
+:end:

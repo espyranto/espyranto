@@ -1,1 +1,2 @@
-/py-cache/
+*__pycache__
+/espyranto.egg-info/
