@@ -4,6 +4,17 @@ This generation is limited in utility to plates with two metals {A} and {B}. The
 
 {A}col{B}row{tag}  and {tag} may be empty.
 
+This module integrates reading the plate composition with reading data. In the future, we should separate these so this module only reads the plate composition, and data reading is done by plugins via entry points.
+
+See
+
+- https://amir.rachum.com/blog/2017/07/28/python-entry-points/
+- https://packaging.python.org/specifications/entry-points/
+
+These plugins will define how to get data, and maybe will have some defined API, e.g. it returns a class you can index.
+
+For Gen 1, that might include a module to read images (although this is a whole plate property), and one for reading the mmolH data.
+
 '''
 
 
@@ -22,6 +33,7 @@ from pycse.orgmode import table, figure, headline, print_redirect
 class Plate:
     def __init__(self, directory, ncols=12):
         '''Read the data in a plate DIRECTORY of the form {A}col{B}row{tag}.
+
         NCOLS is the number of columns in the plate.
 
         self.metadata is a dictionary containing a 'parameters' string and any
@@ -57,23 +69,23 @@ class Plate:
         self.tag = tag
 
         f1 = os.path.join(base, directory, f'primary_data/{directory}data.xls')
-        f2 = os.path.join(base, directory, f'auxillary_data/{directory}mmolH.xls')
-
-        for f in [f1, f2]:
-            if not os.path.exists(f):
-                raise Exception(f'{f} not found')
-
+        if not os.path.exists(f1):
+            raise Exception(f'{f1} does not exist')
 
         ef = pd.ExcelFile(f1)
         data = ef.parse()
-        self.metadata = {'parameters': '\n'.join([str(x) for x in data['Parameters'][~pd.isnull(data.Parameters)]])}
+        # get the non-null cells in the Parameters column
+        md = data['Parameters'][~pd.isnull(data.Parameters)]
+        # convert the array to a string to save.
+        self.metadata = {'parameters': '\n'.join([str(x) for x in md])}
+        # check for any lines containing =, then split and save them.
         for line in self.metadata['parameters'].split():
             if '=' in line:
                 key, value = [x.strip() for x in line.split('=')]
                 self.metadata[key] = value
 
-        self.columns = data['Pos Horz'].values # TODO rename to column
-        self.rows = data['Pos Vert'].values  # TODO rename to row
+        self.columns = data['Pos Horz'].values
+        self.rows = data['Pos Vert'].values
 
         self.nrows = len(self.rows) // ncols
 
@@ -86,24 +98,28 @@ class Plate:
         # name, and we do not use it, so we do not read it
         # self.C = data[f'Conc. {C} (mM)'].values
 
+        # TODO this is where the separation should occur. Below here is data specific.
+
         # this is mmolH vs time in each well. Note the units of this are micromoles H2
+        f2 = os.path.join(base, directory, f'auxillary_data/{directory}mmolH.xls')
+        if not os.path.exists(f2):
+            raise Exception(f'{f2} does not exist')
         mmolH_ef = pd.ExcelFile(f2)
         self.mmolH = mmolH_ef.parse(header=None).values
 
-        # Array of images
-        # This is not an ideal glob pattern, it could match too much.
+        # Array of images and timestamps
         image_files = glob.glob(os.path.join(base, directory, f'images/{directory}A_y*.jpg'))
         if not len(image_files) > 0:
             raise Exception('No image files found')
 
+        # These are the timestamps for when the images were taken, but they are
+        # not the same as the reaction times because the reactor is not
+        # illuminated by blue light while taking the image.
         dates = [datetime.strptime(os.path.split(f)[-1],
                                    f'{directory}A_y%ym%md%dH%HM%MS%S.jpg')
                  for f in image_files]
 
         # This is a sorted list of tuples (filename, datetime) for each image
-        # One day it might be nice to make a movie of these. Note, these
-        # timestamps are not the same as the reaction times. They include ~14
-        # seconds of setup time.
         self.images = sorted(zip(image_files, dates), key=operator.itemgetter(1))
 
 
@@ -111,6 +127,8 @@ class Plate:
         '''String representation of an object.'''
         s = [f'{self.directory}']
         s += [self.metadata['parameters']]
+
+        # TODO this contains data specific text that should be separated out to separate modules.
         s += ['',
               f'{len(self.images)} images were acquired.',
               f'Start time: {self.images[0][1]}',
@@ -120,18 +138,27 @@ class Plate:
 
         return '\n'.join(s)
 
+    # TODO: almost everything below here should probably be abstracted out
+
     @property
     def org(self):
         '''Create report.org TODO: still not sure what the best thing to do here is.
-        This goes to a file. It might be nice to just print to output in an org
-        file though.
+
+        This goes to a file called report.org in the current working directory.
+        It might be nice to just print to output in an org file though.
 
         Just accessing the attribute will create the report.
         p = Plate()
         p.org
 
+        in org-mode this still puts images in the org-file, which is not so
+        desirable. It might be better to run this as a shell command in a plate
+        directory:
+
+        python -m espyranto.g1.plate org
+
         '''
-        with print_redirect(os.path.join(self.base, self.directory, 'report.org')):
+        with print_redirect('report.org'):
             print(f'#+TITLE: {self.directory}')
 
             headline('Metadata')
@@ -156,6 +183,7 @@ class Plate:
 
     def __getitem__(self, index):
         '''get self[index]
+
         if index is an integer, it is a linear index that is converted to a row,column
         if index is (row, col) return that well data.
 
@@ -184,15 +212,17 @@ class Plate:
 
 
     def set_timestep(self, timestep=600):
-        '''Set timesteps for illumination. TODO: this is specific to the mmolH
-        experiment that is illuminated. It should be moved out to a specific
-        module.
+        '''Set timesteps for illumination.
+
+        TODO: this is specific to the mmolH experiment that is illuminated. It
+        should be moved out to a specific module.
 
         '''
         self.timestep=timestep
 
+
     def maxh(self):
-        '''Return the index and maximum mmolH .
+        '''Return the index and maximum mmolH for all the wells.
         '''
 
         # max in each well, in this plate shape
@@ -325,3 +355,13 @@ class Plate:
             print(f'Working on {mfile}.')
 
         # TODO return something to show in a jupyter notebook
+
+
+if __name__ == '__main__':
+    path = os.getcwd()
+    p = Plate(path)
+    print(p)
+
+    import sys
+    if 'org' in sys.argv[1:]:
+        p.org
