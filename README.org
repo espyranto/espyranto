@@ -41,40 +41,6 @@ It is a little tricky working with branches and forks. We can add documentation 
 Please report issues at https://github.com/espyranto/espyranto/issues.
 
 
-* Plugins
-
-This is a way to find plugins by their name. You have to have installed these, and they are separate packages. This is code that might go in the espyranto package to automatically load these.
-
-#+BEGIN_SRC python
-from espyranto.g1.plate import Plate
-from espyranto.g1.mmolH import mmolH
-
-p = Plate('../../../../../../Desktop/generation-1-data/02/BicolCorow/')
-print(p[0, 10])
-#+END_SRC
-
-#+RESULTS:
-#+begin_example
-{'row': 0, 'col': 10, 'A': 0.6, 'B': 0.0, 'data': {'mmolH': array([0.        , 0.        , 0.04546052, 0.        , 0.        ,
-       0.04693436, 0.09298058, 0.        , 0.        , 0.12889259,
-       0.        , 0.        , 0.        , 0.        , 0.        ,
-       0.        , 0.        , 0.        , 0.        , 0.19038552,
-       0.12388882, 0.        , 0.        , 0.        , 0.        ,
-       0.03211115, 0.        , 0.        , 0.01473072, 0.        ,
-       0.        , 0.04988252, 0.        , 0.39468199, 0.26825357,
-       0.16573633, 0.17056962, 0.22627644, 0.        , 0.28118126,
-       0.        , 0.01041208, 0.33235631, 0.        , 0.16257702,
-       0.41160885, 0.13269298, 0.28333706, 0.31458762, 0.28146243,
-       0.34383833, 0.39704482, 0.16276284, 0.62684812, 0.37551089,
-       0.03873815, 0.76682365, 0.33837846, 0.33094525, 0.        ,
-       0.        , 0.        , 0.        , 0.        , 0.        ,
-       0.        , 0.        , 0.        , 0.        , 0.        ,
-       0.        , 0.        , 0.        , 0.        ])}}
-#+end_example
-
-
-
-
 * TODO Using this at NERSC
 
 
