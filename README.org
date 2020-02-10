@@ -43,7 +43,17 @@ Please report issues at https://github.com/espyranto/espyranto/issues.
 
 * TODO Using this at NERSC
 
+If you don't have a ~/.ssh/id_rsa.pub at NERSC, then generate your ssh keys at NERSC:
 
+#+BEGIN_SRC sh
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+#+END_SRC
+
+Then add the contents of ~/.ssh/id_rsa.pub as a new key at https://github.com/settings/keys.
+
+Then clone as described in [[*Installation]].
+
+Then see this notebook [[./readme.ipynb]]
 
 
 * Generation 1 example usage
