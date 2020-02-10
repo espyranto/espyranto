@@ -16,7 +16,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import re
 from ase.data import chemical_symbols
-
+from pycse.orgmode import table, figure, headline, print_redirect
 
 
 class Plate:
@@ -120,6 +120,39 @@ class Plate:
 
         return '\n'.join(s)
 
+    @property
+    def org(self):
+        '''Create report.org TODO: still not sure what the best thing to do here is.
+        This goes to a file. It might be nice to just print to output in an org
+        file though.
+
+        Just accessing the attribute will create the report.
+        p = Plate()
+        p.org
+
+        '''
+        with print_redirect(os.path.join(self.base, self.directory, 'report.org')):
+            print(f'#+TITLE: {self.directory}')
+
+            headline('Metadata')
+            print(self.metadata['parameters'])
+
+            headline('Kinetics')
+            plt.figure()
+            self.plot_mmolH_grid()
+            figure(os.path.join(self.base, self.directory,
+                                'report-images', 'grid.png'),
+                   caption='Grid plot of hydrogen production.',
+                   name='fig-grid-kinetics')
+
+            headline('Max umolH')
+            plt.figure()
+            self.plot_mmolH_max()
+            figure(os.path.join(self.base, self.directory,
+                                'report-images', 'maxh.png'),
+                   caption='Maximum hydrogen production.',
+                   name='fig-maxH')
+
 
     def __getitem__(self, index):
         '''get self[index]
@@ -210,7 +243,9 @@ class Plate:
     def plot_mmolH_max_contourf(self):
         ncols, nrows = self.ncols, len(self.mmolH) // self.ncols
         mmolH = np.max(self.mmolH, axis=1).reshape(nrows, ncols)
-        p = plt.contourf(self.A.reshape(nrows, ncols), self.B.reshape(nrows, ncols), mmolH)
+        p = plt.contourf(self.A.reshape(nrows, ncols),
+                         self.B.reshape(nrows, ncols),
+                         mmolH)
         plt.colorbar()
         plt.xlabel(f'{self.metalB} (mM)')
         plt.ylabel(f'{self.metalA} (mM)')
@@ -249,6 +284,7 @@ class Plate:
         Generates movie.mp4
 
         TODO: test, make sure paths are right
+        a subprocess may be preferred to os.system.
         '''
         mfile = os.path.join(self.base, self.directory, 'movie.mp4')
 

@@ -2,16 +2,47 @@
 
 * Installation
 
+Note: if you plan to do any development on this, see [[*Development]].
+
+I recommend you install like this. Go to a directory on your python path and run these commands.
+
 #+BEGIN_SRC sh
 git clone git@github.com:espyranto/espyranto.git
 pip install -e espyranto
 #+END_SRC
+
+I am pretty sure you can update espyranto later by just going to the directory and running:
+
+#+BEGIN_SRC sh
+git pull
+#+END_SRC
+
 
 * Development
 
 We are currently working on "Generation 1" espyranto. This code is located in [[./espyranto/g1/]].
 
 This will have an a Plate class to read from a directory to get the compositions of the wells, and the kinetic data that Eric Lopato has derived from image analysis.
+
+If you want to develop on this, I suggest you fork espyranto on Github, and then install your fork. You can create pull requests to merge your development into the main code. This takes some skills and practice, so please start with small changes, and talk to Dr. Kitchin about how to do it before investing a lot of time in it.
+
+1. Make a new branch off the master of your fork
+2. Make a set of changes in your branch
+3. Push your branch to your fork
+4. Go to Github and make a pull request off the fork
+5. We will review the request, and if it is ok, merge it
+6. Then, you would update your master which now should have your updates in it.
+
+It is a little tricky working with branches and forks. We can add documentation here as needed to at least make it simpler.
+
+* Reporting issues
+
+Please report issues at https://github.com/espyranto/espyranto/issues.
+
+* TODO Using this at NERSC
+
+
+
 
 * Generation 1 example usage
 
@@ -55,6 +86,14 @@ End time: 2019-02-10 12:15:44
 mmolH data has shape: (96, 74)
 
 :end:
+
+This generates an org report for you. It might be a good idea to make this also something to do with a shell command e.g.: python -m espyranto.g1.plate org
+
+#+BEGIN_SRC ipython :results silent
+p.org
+#+END_SRC
+
+
 
 Here we can access the 'A' element of the metadata because there is a cell containing 'A=Pd' in the Parameters column of the Excel spreadsheet.
 
