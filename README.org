@@ -55,6 +55,12 @@ Then clone as described in [[*Installation]].
 
 Then see this notebook [[./readme.ipynb]]
 
+It seems like you have manually install these.
+
+#+BEGIN_SRC sh
+pip install  --user ase pycse quantities uncertainties
+#+END_SRC
+
 
 * Generation 1 example usage
 
