@@ -4,31 +4,7 @@ This generation is limited in utility to plates with two metals {A} and {B}. The
 
 {A}col{B}row{tag}  and {tag} may be empty.
 
-This module integrates reading the plate composition with reading data. In the future, we should separate these so this module only reads the plate composition, and data reading is done by plugins. I think this will be done by entry-points, but there may be other ways to do it too (although that is probably via monkey-patching).
-
-See
-
-- https://amir.rachum.com/blog/2017/07/28/python-entry-points/
-- https://packaging.python.org/specifications/entry-points/
-- https://packaging.python.org/guides/creating-and-discovering-plugins/
-
-These plugins will define how to get data, and maybe will have some defined API, e.g. it returns a class you can index.
-
-For Gen 1, that might include a module to read images (although this is a whole plate property) and for reading the derived darkness and mmolH data.
-
-I think this will add to a data attribute on the plate so that:
-
-p[i] will return the ith well composition, and something like [d[i] for d in p.data].
-
-Something like this would be great.
-
-from espyranto.g1 import plate, mmolH
-
-p = Plate(path)
-
-would lead to
-
-p.data = [mmolH] where those are classes holding the data.
+Data is read by plugins that define how to get data. see mmolH.py.
 '''
 
 
@@ -62,6 +38,8 @@ class Plate:
         self.A contains the concentration of A in each well (indexed 0 to 95)
         self.B contains the concentration of B in each well (indexed 0 to 95)
         self.PS contains the concentration of photosensitizer in each well (indexed 0 to 95)
+
+        self.data is a dictionary if there are any datamodules defined.
 
         '''
         if directory.endswith('/'):
@@ -189,8 +167,7 @@ class Plate:
 
         elif isinstance(index, tuple) and len(index) == 2:
             row, col = index
-            # TODO: this formula is hard coded for 96 wells
-            index = row * 12 + col
+            index = row * self.ncols + col
         else:
             raise Exception('index is the wrong shape. It should be like p[0] or p[0, 0].')
 
@@ -204,6 +181,7 @@ class Plate:
 
 
 if __name__ == '__main__':
+    # You can run this as a script: python -m espyranto.g1.plate
     path = os.getcwd()
     p = Plate(path)
     print(p)
