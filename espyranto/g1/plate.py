@@ -43,8 +43,13 @@ import re
 from ase.data import chemical_symbols
 from pycse.orgmode import table, figure, headline, print_redirect
 
+import importlib
+import pkgutil
 
 class Plate:
+
+    datamodules = []  # this will be added to by plugins eg. mmolH
+
     def __init__(self, directory, ncols=12):
         '''Read the data in a plate DIRECTORY of the form {A}col{B}row{tag}.
 
@@ -57,9 +62,6 @@ class Plate:
         self.A contains the concentration of A in each well (indexed 0 to 95)
         self.B contains the concentration of B in each well (indexed 0 to 95)
         self.PS contains the concentration of photosensitizer in each well (indexed 0 to 95)
-
-        self.mmolH is an array of (rows, timesteps) converted
-        self.images is an array of (path, datetime) for each image
 
         '''
         if directory.endswith('/'):
@@ -112,29 +114,9 @@ class Plate:
         # name, and we do not use it, so we do not read it
         # self.C = data[f'Conc. {C} (mM)'].values
 
-        # TODO this is where the separation should occur. Below here is data specific.
-
-        # this is mmolH vs time in each well. Note the units of this are micromoles H2
-        f2 = os.path.join(base, directory, f'auxillary_data/{directory}mmolH.xls')
-        if not os.path.exists(f2):
-            raise Exception(f'{f2} does not exist')
-        mmolH_ef = pd.ExcelFile(f2)
-        self.mmolH = mmolH_ef.parse(header=None).values
-
-        # Array of images and timestamps
-        image_files = glob.glob(os.path.join(base, directory, f'images/{directory}A_y*.jpg'))
-        if not len(image_files) > 0:
-            raise Exception('No image files found')
-
-        # These are the timestamps for when the images were taken, but they are
-        # not the same as the reaction times because the reactor is not
-        # illuminated by blue light while taking the image.
-        dates = [datetime.strptime(os.path.split(f)[-1],
-                                   f'{directory}A_y%ym%md%dH%HM%MS%S.jpg')
-                 for f in image_files]
-
-        # This is a sorted list of tuples (filename, datetime) for each image
-        self.images = sorted(zip(image_files, dates), key=operator.itemgetter(1))
+        # This is where the separation should occur. Below here is data specific.
+        self.data = {m.name: m for m in
+                     [module(self) for module in self.datamodules]}
 
 
     def __str__(self):
@@ -142,57 +124,52 @@ class Plate:
         s = [f'{self.directory}']
         s += [self.metadata['parameters']]
 
-        # TODO this contains data specific text that should be separated out to separate modules.
-        s += ['',
-              f'{len(self.images)} images were acquired.',
-              f'Start time: {self.images[0][1]}',
-              f'End time: {self.images[-1][1]}']
-
-        s += [f'mmolH data has shape: {self.mmolH.shape}']
+        for key in self.data:
+            s += [str(self.data[key]), '']
 
         return '\n'.join(s)
 
     # TODO: almost everything below here should probably be abstracted out
 
-    @property
-    def org(self):
-        '''Create report.org TODO: still not sure what the best thing to do here is.
+    # @property
+    # def org(self):
+    #     '''Create report.org TODO: still not sure what the best thing to do here is.
 
-        This goes to a file called report.org in the current working directory.
-        It might be nice to just print to output in an org file though.
+    #     This goes to a file called report.org in the current working directory.
+    #     It might be nice to just print to output in an org file though.
 
-        Just accessing the attribute will create the report.
-        p = Plate()
-        p.org
+    #     Just accessing the attribute will create the report.
+    #     p = Plate()
+    #     p.org
 
-        in org-mode this still puts images in the org-file, which is not so
-        desirable. It might be better to run this as a shell command in a plate
-        directory:
+    #     in org-mode this still puts images in the org-file, which is not so
+    #     desirable. It might be better to run this as a shell command in a plate
+    #     directory:
 
-        python -m espyranto.g1.plate org
+    #     python -m espyranto.g1.plate org
 
-        '''
-        with print_redirect('report.org'):
-            print(f'#+TITLE: {self.directory}')
+    #     '''
+    #     with print_redirect('report.org'):
+    #         print(f'#+TITLE: {self.directory}')
 
-            headline('Metadata')
-            print(self.metadata['parameters'])
+    #         headline('Metadata')
+    #         print(self.metadata['parameters'])
 
-            headline('Kinetics')
-            plt.figure()
-            self.plot_mmolH_grid()
-            figure(os.path.join(self.base, self.directory,
-                                'report-images', 'grid.png'),
-                   caption='Grid plot of hydrogen production.',
-                   name='fig-grid-kinetics')
+    #         headline('Kinetics')
+    #         plt.figure()
+    #         self.plot_mmolH_grid()
+    #         figure(os.path.join(self.base, self.directory,
+    #                             'report-images', 'grid.png'),
+    #                caption='Grid plot of hydrogen production.',
+    #                name='fig-grid-kinetics')
 
-            headline('Max umolH')
-            plt.figure()
-            self.plot_mmolH_max()
-            figure(os.path.join(self.base, self.directory,
-                                'report-images', 'maxh.png'),
-                   caption='Maximum hydrogen production.',
-                   name='fig-maxH')
+    #         headline('Max umolH')
+    #         plt.figure()
+    #         self.plot_mmolH_max()
+    #         figure(os.path.join(self.base, self.directory,
+    #                             'report-images', 'maxh.png'),
+    #                caption='Maximum hydrogen production.',
+    #                name='fig-maxH')
 
 
     def __getitem__(self, index):
@@ -201,10 +178,9 @@ class Plate:
         if index is an integer, it is a linear index that is converted to a row,column
         if index is (row, col) return that well data.
 
-        This is hard-coded to mmolH right now. Later we might define a data API
-        to allow other data to be accessed.
+        The data classes are responsible for implementing indexing this way.
 
-        TODO: this might return a Well object later.
+        Slicing is not currently supported.
         '''
 
         if isinstance(index, int):
@@ -222,160 +198,12 @@ class Plate:
                 'col': col,
                 'A': self.A[index],
                 'B': self.B[index],
-                'mmolH': self.mmolH[index]}
+                'data': {d.name: d[index] for d in self.data}}
 
 
-    def set_timestep(self, timestep=600):
-        '''Set timesteps for illumination.
-
-        TODO: this is specific to the mmolH experiment that is illuminated. It
-        should be moved out to a specific module.
-
-        '''
-        self.timestep=timestep
-
-
-    def maxh(self):
-        '''Return the index and maximum mmolH for all the wells.
-        '''
-
-        # max in each well, in this plate shape
-        mx = np.max(self.mmolH, axis=1)
-        am = np.argmax(mx)
-        return am, mx[am]
-
-
-    def plot_mmolH(self, i):
-        '''Plot the Ith mmolH vs. time.'''
-        t = np.arange(0, self.mmolH.shape[1]) * self.timestep / 3600
-
-        if (isinstance(i, list) or isinstance(i, list)) and len(i)==2:
-            row, col = i
-            i = row * self.ncols + col
-
-        plt.plot(t, self.mmolH[i])
-        plt.xlabel('Time (hr)')
-        plt.ylabel('$\mu mol H$')
-
-
-    def plot_mmolH_grid(self):
-        '''Make a grid-plot of the mmolH data.
-
-        TODO: axis labels.'''
-        ncols, nrows = self.ncols, len(self.mmolH) // self.ncols
-        fig, axes = plt.subplots(nrows, ncols, sharex='all', sharey='all',
-                                 figsize=(nrows, ncols))
-
-        t = np.arange(0, self.mmolH.shape[1]) * self.timestep / 3600
-
-        for row in range(nrows):
-            for col in range(ncols):
-                ind = row * ncols + col
-                axes[row, col].plot(t, self.mmolH[ind])
-        return fig, axes
-
-
-    def plot_mmolH_max(self):
-        '''Make a colored array plot of max mmolH in each well'''
-        ncols, nrows = self.ncols, len(self.mmolH) // self.ncols
-        plt.imshow(np.max(self.mmolH, axis=1).reshape(nrows, ncols), origin='upper')
-        plt.xlabel('columns')
-        plt.ylabel('rows')
-        plt.colorbar()
-
-
-    def plot_mmolH_max_contourf(self):
-        ncols, nrows = self.ncols, len(self.mmolH) // self.ncols
-        mmolH = np.max(self.mmolH, axis=1).reshape(nrows, ncols)
-        p = plt.contourf(self.A.reshape(nrows, ncols),
-                         self.B.reshape(nrows, ncols),
-                         mmolH)
-        plt.colorbar()
-        plt.xlabel(f'{self.metalB} (mM)')
-        plt.ylabel(f'{self.metalA} (mM)')
-        return p
-
-    # TODO Other properties we might derive:
-    # Rate, max rate, etc.
-
-
-    def show_plate(self, i):
-        '''Show an image of the plate at the ith timestep.
-        I is normally an integer, but it can also be a slice.
-        p.show_plate(slice(0, 3)) to show the first three images.
-
-        This is kind of a placeholder. You probably want to add some control for
-        the size of images with slices.
-
-        '''
-
-        import matplotlib.image as mpimg
-        if isinstance(i, int):
-            img = mpimg.imread(self.images[i][0])
-            return plt.imshow(img)
-        elif isinstance(i, slice):
-            inds = list(range(*i.indices(len(self.images))))
-            N = len(inds)
-            f, axes = plt.subplots(N)
-            for j in range(N):
-                axes[j].imshow(mpimg.imread(self.images[inds[j]][0]))
-            return f, axes
-
-
-    def movie_ffmpeg(self):
-        '''Generate and play a movie using ffmpeg.
-
-        Generates movie.mp4
-
-        TODO: test, make sure paths are right
-        a subprocess may be preferred to os.system.
-        '''
-        mfile = os.path.join(self.base, self.directory, 'movie.mp4')
-
-        if os.path.exists(mfile):
-            print(f'Already made {mfile}.')
-        else:
-            files = 'mpeg.txt'
-            with open(files, 'w') as f:
-                for fname, dt in self.images:
-                    f.write(f"file '{fname}'\n")
-
-            os.system(f'ffmpeg -f concat -i mpeg.txt {mfile}&')
-            os.remove('mpeg.txt')
-            print(f'Working {mfile}.')
-
-        # TODO return something to show in a jupyter notebook
-
-    def movie_imagemagick(self):
-        '''Generate and play a movie using converg.
-
-        Generates movie.gif
-
-        TODO: test, make sure paths are right.
-
-        '''
-        mfile = os.path.join(self.base, self.directory, 'movie.gif')
-
-        if os.path.exists(mfile):
-            print(f'Already made {mfile}.')
-        else:
-            files = 'convert.txt'
-            with open(files, 'w') as f:
-                for fname, dt in self.images:
-                    f.write(f"{fname}\n")
-
-            os.system(f'convert -verbose -resample 12x9 -delay 0.1 @convert.txt -loop 0 {mfile} &')
-            os.remove('convert.txt')
-            print(f'Working on {mfile}.')
-
-        # TODO return something to show in a jupyter notebook
 
 
 if __name__ == '__main__':
     path = os.getcwd()
     p = Plate(path)
     print(p)
-
-    import sys
-    if 'org' in sys.argv[1:]:
-        p.org

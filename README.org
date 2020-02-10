@@ -35,9 +35,45 @@ If you want to develop on this, I suggest you fork espyranto on Github, and then
 
 It is a little tricky working with branches and forks. We can add documentation here as needed to at least make it simpler.
 
+
 * Reporting issues
 
 Please report issues at https://github.com/espyranto/espyranto/issues.
+
+
+* Plugins
+
+This is a way to find plugins by their name. You have to have installed these, and they are separate packages. This is code that might go in the espyranto package to automatically load these.
+
+#+BEGIN_SRC python
+from espyranto.g1.plate import Plate
+from espyranto.g1.mmolH import mmolH
+
+p = Plate('../../../../../../Desktop/generation-1-data/02/BicolCorow/')
+print(p[0, 10])
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+{'row': 0, 'col': 10, 'A': 0.6, 'B': 0.0, 'data': {'mmolH': array([0.        , 0.        , 0.04546052, 0.        , 0.        ,
+       0.04693436, 0.09298058, 0.        , 0.        , 0.12889259,
+       0.        , 0.        , 0.        , 0.        , 0.        ,
+       0.        , 0.        , 0.        , 0.        , 0.19038552,
+       0.12388882, 0.        , 0.        , 0.        , 0.        ,
+       0.03211115, 0.        , 0.        , 0.01473072, 0.        ,
+       0.        , 0.04988252, 0.        , 0.39468199, 0.26825357,
+       0.16573633, 0.17056962, 0.22627644, 0.        , 0.28118126,
+       0.        , 0.01041208, 0.33235631, 0.        , 0.16257702,
+       0.41160885, 0.13269298, 0.28333706, 0.31458762, 0.28146243,
+       0.34383833, 0.39704482, 0.16276284, 0.62684812, 0.37551089,
+       0.03873815, 0.76682365, 0.33837846, 0.33094525, 0.        ,
+       0.        , 0.        , 0.        , 0.        , 0.        ,
+       0.        , 0.        , 0.        , 0.        , 0.        ,
+       0.        , 0.        , 0.        , 0.        ])}}
+#+end_example
+
+
+
 
 * TODO Using this at NERSC
 
@@ -54,13 +90,13 @@ Note, a simple way to get machine-readable key/value pairs in the metadata is to
 
 #+BEGIN_SRC ipython :restart
 from espyranto.g1.plate import Plate
+from espyranto.g1.mmolH import mmolH
 
 %matplotlib inline
 import matplotlib.pyplot as plt
 
-p = Plate('../../../../../doe-data-science-h2/doe-data-science-h2-team/data/example-data/PdcolSnrow/')
+p = Plate('/Users/jkitchin/Desktop/generation-1-data/03/RucolCurow-I/')
 
-p.set_timestep(600)
 print(p)
 #+END_SRC
 
@@ -68,31 +104,27 @@ print(p)
 :results:
 # Out [1]:
 # output
-PdcolSnrow
+RucolCurow-I
 H2 Evo - Alloy Nanopart.
-2019-02-09 00:00:00
-Pd Columns Sn Rows
+2019-03-21 00:00:00
+Ru Columns CuI Rows
 In DMSO
 10:1 solvent to water
 TEOA
 Solution Volume (mL)
 0.45
-A=Pd
-B=Sn
+A=Ru
+B=Cu
 
-119 images were acquired.
-Start time: 2019-02-09 16:26:04
-End time: 2019-02-10 12:15:44
-mmolH data has shape: (96, 74)
+mmolH data
+  100 images were acquired.
+  Start time: 2019-03-21 20:24:33
+  End time: 2019-03-22 13:02:46
+  The timestep is 600 s
+  mmolH data has shape: (96, 74)
+
 
 :end:
-
-This generates an org report for you. It might be a good idea to make this also something to do with a shell command e.g.: python -m espyranto.g1.plate org
-
-#+BEGIN_SRC ipython :results silent
-p.org
-#+END_SRC
-
 
 
 Here we can access the 'A' element of the metadata because there is a cell containing 'A=Pd' in the Parameters column of the Excel spreadsheet.
@@ -105,40 +137,55 @@ p.metadata['A']
 :results:
 # Out [2]:
 # text/plain
-: 'Pd'
+: 'Ru'
 :end:
 
-** Max functions
+Composition in row 0:
 
 #+BEGIN_SRC ipython
-p.maxh()
+for i, (a, b) in enumerate(zip(p.A.reshape(p.nrows, p.ncols)[0],
+                               p.B.reshape(p.nrows, p.ncols)[0])):
+    print(f'col {i:2d}  {p.metadata["A"]} {a:5.2f}, {p.metadata["B"]} {b:5.2f}')
 #+END_SRC
 
 #+RESULTS:
 :results:
 # Out [3]:
-# text/plain
-: (28, 37.48418383379452)
+# output
+col  0  Ru  0.00, Cu  0.00
+col  1  Ru  0.05, Cu  0.00
+col  2  Ru  0.10, Cu  0.00
+col  3  Ru  0.15, Cu  0.00
+col  4  Ru  0.20, Cu  0.00
+col  5  Ru  0.25, Cu  0.00
+col  6  Ru  0.30, Cu  0.00
+col  7  Ru  0.35, Cu  0.00
+col  8  Ru  0.40, Cu  0.00
+col  9  Ru  0.50, Cu  0.00
+col 10  Ru  0.60, Cu  0.00
+col 11  Ru  0.65, Cu  0.00
+
 :end:
 
-** Plots
+
+** Max functions
 
 #+BEGIN_SRC ipython
-p.plot_mmolH(23)
+mmolH = p.data['mmolH']
+mmolH.maxh()
 #+END_SRC
 
 #+RESULTS:
 :results:
 # Out [4]:
 # text/plain
-: <Figure size 432x288 with 1 Axes>
-
-# image/png
-[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/35b3d9578271a8c4277c7b4b8d00ce465afedca8.png]]
+: (50, 26.21087877096682)
 :end:
 
+** Plots
+
 #+BEGIN_SRC ipython
-p.plot_mmolH([1, 11])
+mmolH.plot_mmolH(23)
 #+END_SRC
 
 #+RESULTS:
@@ -148,57 +195,53 @@ p.plot_mmolH([1, 11])
 : <Figure size 432x288 with 1 Axes>
 
 # image/png
-[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/35b3d9578271a8c4277c7b4b8d00ce465afedca8.png]]
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/3395db1cf1e03e598dd38413083085ec2f92b4e5.png]]
 :end:
 
 #+BEGIN_SRC ipython
-p.plot_mmolH_grid();
+mmolH.plot_mmolH([1, 11])
 #+END_SRC
 
 #+RESULTS:
 :results:
 # Out [6]:
 # text/plain
-: <Figure size 576x864 with 96 Axes>
+: <Figure size 432x288 with 1 Axes>
 
 # image/png
-[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/64f6852a5c41e6fbd7ba64d9be053c3ac193518e.png]]
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/3395db1cf1e03e598dd38413083085ec2f92b4e5.png]]
 :end:
 
 #+BEGIN_SRC ipython
-p.plot_mmolH_max()
+mmolH.plot_mmolH_grid();  # ; suppresses a lot of matplotlib output
 #+END_SRC
 
 #+RESULTS:
 :results:
 # Out [7]:
 # text/plain
-: <Figure size 432x288 with 2 Axes>
+: <Figure size 576x864 with 96 Axes>
 
 # image/png
-[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/988d29035a7d5528489dba7a2a891ebfda8a59ce.png]]
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/87cea271c4e1719bf84a4abf223fbf9855948773.png]]
 :end:
 
 #+BEGIN_SRC ipython
-p.plot_mmolH_max_contourf()
+mmolH.plot_mmolH_max()
 #+END_SRC
 
 #+RESULTS:
 :results:
 # Out [8]:
-
-
 # text/plain
 : <Figure size 432x288 with 2 Axes>
 
 # image/png
-[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/585370d1dd2c022e1d58ab383ada6cc8eb82df3d.png]]
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/366dfc8743501d5cbcf3cd25d602f1c67557b7be.png]]
 :end:
 
-** See plates
-
 #+BEGIN_SRC ipython
-p.show_plate(20)
+mmolH.plot_mmolH_max_contourf()
 #+END_SRC
 
 #+RESULTS:
@@ -207,48 +250,89 @@ p.show_plate(20)
 
 
 # text/plain
-: <Figure size 432x288 with 1 Axes>
+: <Figure size 432x288 with 2 Axes>
 
 # image/png
-[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/d9d8dd28ce7a7dc22bbc6760f163dfb561e819e3.png]]
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/9a51f9a7f72c96595b780125d96b87312c577910.png]]
 :end:
 
+** See plates
+
 #+BEGIN_SRC ipython
-p.show_plate(slice(0, -1, 20));
+mmolH.show_plate(20)
 #+END_SRC
 
 #+RESULTS:
 :results:
 # Out [10]:
+
+
 # text/plain
-: <Figure size 432x288 with 6 Axes>
+: <Figure size 432x288 with 1 Axes>
 
 # image/png
-[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/3f4079e4901f11e2bdb4dbbcad3dc9cd03a57a44.png]]
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/8d98ea49a8a0e6183ed779667d5ff595ab3b0e8e.png]]
 :end:
 
-** Movies
-
 #+BEGIN_SRC ipython
-p.movie_ffmpeg()
+mmolH.show_plate(slice(0, -1, 20));
 #+END_SRC
 
 #+RESULTS:
 :results:
 # Out [11]:
-# output
-Working ../../../../../doe-data-science-h2/doe-data-science-h2-team/data/example-data/PdcolSnrow/movie.mp4.
+# text/plain
+: <Figure size 432x288 with 5 Axes>
 
+# image/png
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/ec0009ef45bbc93584c5373199afad880c927ae5.png]]
 :end:
 
+** TODO plots of maxH/max rate in the plate as function of various compositions
+
+These are reduced dimension plots. For example, here we plot maxH vs mole fraction of Ru in a scatter plot, where the size of the circle is related to the total concentration of metals.
+
 #+BEGIN_SRC ipython
-p.movie_imagemagick()
+import numpy as np
+tot = p.A + p.B
+x = p.A / np.where(tot > 0, tot, 1) # one cell is empty as a control
+plt.scatter(x, np.max(mmolH.mmolH, axis=1), (p.A + p.B) * 200, alpha=0.5)
+plt.xlabel(f'$x_{{{p.metadata["A"]}}}$')
+plt.ylabel('Max H2 formed')
 #+END_SRC
 
 #+RESULTS:
 :results:
 # Out [12]:
-# output
-Working on ../../../../../doe-data-science-h2/doe-data-science-h2-team/data/example-data/PdcolSnrow/movie.gif.
+# text/plain
+: Text(0, 0.5, 'Max H2 formed')
 
+# text/plain
+: <Figure size 432x288 with 1 Axes>
+
+# image/png
+[[file:obipy-resources/73c308900d8ba1060170533b02065ff9d6a23af3/4abc664dc47b58be22eae7cc25df6a3b8b78f189.png]]
 :end:
+
+This suggests Ru is not very good, Cu gets better with increasing concentration, and together they are much better than you would expect.
+
+** TODO Movies - these functions are not working yet
+
+#+BEGIN_SRC ipython
+p.movie_ffmpeg()
+#+END_SRC
+
+
+#+BEGIN_SRC ipython
+p.movie_imagemagick()
+#+END_SRC
+
+** TODO Work out how to estimate a rate
+
+Eric used a smoothed function for this.
+
+I think Kirby has been fitting a first order rate law, maybe with a delay. That will not always work, some data does not look like that.
+
+** TODO Work out the delay
+
+Many of these show some period of no activity before there is an onset. We should develop a way to estimate what that is so we can see what factors affect it.
