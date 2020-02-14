@@ -11,5 +11,5 @@ setup(name='espyranto',
       packages=['espyranto'],
       scripts=[],
       include_package_data=True,
-      install_requires=['ase', 'pycse', 'pandas', 'xlrd'],
+      install_requires=['ase', 'matplotlib', 'numpy', 'pycse', 'pandas', 'xlrd'],
       long_description='''A module to read plate data.''',)
