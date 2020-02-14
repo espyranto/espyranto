@@ -107,6 +107,12 @@ class Plate:
 
         return '\n'.join(s)
 
+
+    def __repr__(self):
+        '''Representation'''
+        s = f'{self.metadata["A"]}-{self.metadata["B"]} plate'
+        return s
+
     # TODO: almost everything below here should probably be abstracted out
 
     # @property
@@ -175,7 +181,7 @@ class Plate:
                 'col': col,
                 'A': self.A[index],
                 'B': self.B[index],
-                'data': {d.name: d[index] for d in self.data}}
+                'data': {d: self.data[d][index] for d in self.data}}
 
 
 
