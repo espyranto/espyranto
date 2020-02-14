@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='espyranto',
-      version='0.0.1',
+      version='0.0.2',
       description='Module for multi-well plate data',
       url='http://github.com/espyranto/espyranto',
       author='John Kitchin',
