@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+import sys
+
+import numpy as np
+
+import matplotlib
+matplotlib.use('TkAgg')
+
+import matplotlib.pyplot as plt
+
+from espyranto.g1.plate import Plate
+from espyranto.g1.mmolH import mmolH
+
+import logging
+
+
+parser = argparse.ArgumentParser(description='Espyranto command line tool.')
+
+parser.add_argument('--org', action='store_true',
+                    help='summarize the current directory')
+
+parser.add_argument('--debug', action='store_true',
+                    help='turn debugging on')
+
+parser.add_argument('dir', nargs='*', default=[os.getcwd()])
+
+args = parser.parse_args()
+
+if args.debug:
+    logging.basicConfig(level=logging.DEBUG)
+
+# Summary action
+# for d in args.dir:
+#     if os.path.isdir(os.path.join(d, 'primary_data')):
+#         p = Plate(d)
+#         print(p)
+#         print()
+#     else:
+#         print(f'{d} does not appear to be a plate')
+
+
+# Org report - generate an org summary for a directory
+if args.org:
+    from pycse.orgmode import print_redirect
+
+    for d in args.dir:
+        print(d)
+        p = Plate(d)
+        with print_redirect(os.path.join(p.base, p.directory, "report.org")):
+            p.org
+
+# Other ideas?
+# Add directory, commit and push?
+# validate
