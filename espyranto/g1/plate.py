@@ -155,7 +155,7 @@ class Plate:
         import time
 
         ts = time.time()
-        st = datetime.datetime.fromtimestamp(ts).strftime('[%Y-%m-%d %s %H:%M:%S]')
+        st = datetime.datetime.fromtimestamp(ts).strftime('[%Y-%m-%d %a %H:%M:%S]')
 
         CWD = os.getcwd()
         os.chdir(os.path.join(self.base,
@@ -171,6 +171,7 @@ class Plate:
             print(f'#+CREATED: {st}')
             print('#+STARTUP: showall')
             print()
+            print('Generated report. Do not edit. Changes may be lost.\n')
             headline('Summary',
                      tags=[A, B],
                      body=str(self))
