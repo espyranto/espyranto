@@ -1,9 +1,4 @@
-'''Plugin class to read image and mmolH data.'''
-
-from datetime import datetime
-import glob
-import operator
-'''Class for reading hydrogen data.
+'''Plugin class to read image and mmolH data.
 
 This is a "data" class, it can only take one argument which is a plate object.
 
@@ -12,10 +7,18 @@ That plate object should have all the information this class needs to load the d
 That is a little tricky, e.g. where does a timestep go? It is not quite part of a plate, but we don't have a way to put it in here, because these are automatically loaded. For now, we allow it to be in the plate metadata and default to 600 if it is not there.
 '''
 
+from datetime import datetime
+import glob
+import operator
 import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+from matplotlib.collections import LineCollection
+from matplotlib.colors import ListedColormap, BoundaryNorm
+from scipy.interpolate import UnivariateSpline
+
 import espyranto
 
 
@@ -98,7 +101,7 @@ class mmolH:
 
 
     def plot_mmolH(self, i):
-        '''Plot the Ith mmolH vs. time.'''
+        '''Plot mmolH vs. time for well i.'''
         t = np.arange(0, self.mmolH.shape[1]) * self.timestep / 3600
 
         if (isinstance(i, list) or isinstance(i, list)) and len(i)==2:
@@ -107,14 +110,21 @@ class mmolH:
 
         plt.plot(t, self.mmolH[i])
         plt.xlabel('Time (hr)')
-        plt.ylabel('$\mu mol H$')
+        plt.ylabel('$\mu mol H_2$')
 
 
     def plot_mmolH_grid(self):
-        '''Make a grid-plot of the mmolH data.
+        '''Make a grid-plot of the mmolH data in each well.
 
-        TODO: axis labels.'''
+        Deprecated: use `plot_mmolH_grid_spline' instead. It has more
+        information.
+
+        Returns the figure and axes for the plot.
+
+        '''
+
         ncols, nrows = self.plate.ncols, len(self.mmolH) // self.plate.ncols
+
         fig, axes = plt.subplots(nrows, ncols, sharex='all', sharey='all',
                                  figsize=(nrows, ncols))
 
@@ -124,19 +134,148 @@ class mmolH:
             for col in range(ncols):
                 ind = row * ncols + col
                 axes[row, col].plot(t, self.mmolH[ind])
+
+        for row in range(nrows):
+            axes[row, 0].set_ylabel(f'R{row}', rotation=0, size='large')
+
+        for col in range(ncols):
+            axes[0, col].set_title(f'C{col}')
+
+        fig.tight_layout()
         return fig, axes
 
 
-    def plot_mmolH_max(self):
-        '''Make a colored array plot of max mmolH in each well'''
+
+    def get_smoothed_data_derivative(self, x, y, s=4, N=None):
+        '''Return a smoothed array of data points in x and y and the derivative at each
+        point.
+
+        S is the spline smoothing
+        N is the points to sample, defaults to 10 * len(x)
+
+        returns xs, ys, dydx
+        xs: np.array() with shape (N * len(x))
+        ys: np.array() of smoothed data
+        dydx: np.array() of derivative at xs.
+
+        '''
+
+        s = UnivariateSpline(x, y, s=s)
+
+        xs = np.linspace(x.min(), x.max(), N or 10 * len(x))
+        ys = s(xs)
+
+        dydx = s.derivative()(xs)
+
+        return xs, ys, dydx
+
+
+    def plot_mmolH_grid_spline(self, s=4, N=None):
+        '''Make a grid-plot of the mmolH data.
+
+        The data points are shown as dots. A smoothed spline goes through them.
+        A dot shows where the maximum derivative is.
+
+        See `get_smoothed_data_derivative' for the meanings of s, N.
+
+        Returns: figure and axes of plot.
+
+        '''
+
         ncols, nrows = self.plate.ncols, len(self.mmolH) // self.plate.ncols
-        plt.imshow(np.max(self.mmolH, axis=1).reshape(nrows, ncols), origin='upper')
+
+        fig, axes = plt.subplots(nrows, ncols, sharex='all', sharey='all',
+                                 figsize=(nrows, ncols))
+
+        t = np.arange(0, self.mmolH.shape[1]) * self.timestep / 3600
+
+        for row in range(nrows):
+            for col in range(ncols):
+                ind = row * ncols + col
+                xs, ys, dydx = self.get_smoothed_data_derivative(t, self.mmolH[ind],
+                                                                 s=s, N=N)
+                imax = np.argmax(dydx)
+                axes[row, col].plot(t, self.mmolH[ind], 'r.', ms=2)
+                # smoothed data
+                axes[row, col].plot(xs, ys, 'k-')
+                # here is the max rate
+                axes[row, col].plot(xs[imax], ys[imax], 'bo')
+
+        # Row labels
+        for row in range(nrows):
+            axes[row, 0].set_ylabel(f'{row}', rotation=0, size='large')
+
+        # Column labels
+        for col in range(ncols):
+            axes[0, col].set_title(f'{col}')
+
+        fig.tight_layout()
+        return fig, axes
+
+
+    def plot_mmolH_max_derivative_spline(self, s=4, N=None):
+        '''Make a heatmap plot of max derivative in each well.
+
+        The rates are from derivatives of a smoothed spline.
+
+        See `get_smoothed_data_derivative' for the meanings of s, N.
+
+        '''
+        import matplotlib as mpl
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+        plt.figure()
+
+        t = np.arange(0, self.mmolH.shape[1]) * self.timestep / 3600
+        max_derivatives = []
+        for row in self.mmolH:
+            xs, ys, dydx = self.get_smoothed_data_derivative(t, row, s=s, N=N)
+            max_derivatives += [np.max(dydx)]
+
+        max_derivatives = np.array(max_derivatives)
+
+        ncols, nrows = self.plate.ncols, len(self.mmolH) // self.plate.ncols
+        im = plt.imshow(max_derivatives.reshape(nrows, ncols), origin='upper')
         plt.xlabel('columns')
         plt.ylabel('rows')
-        plt.colorbar()
+        plt.title('Max rate (spline)')
+
+        ax = plt.gca()
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+
+        plt.colorbar(cax=cax, ax=ax)
+
+        plt.tight_layout()
+
+        return plt.gcf(), plt.gca()
+
+
+    def plot_mmolH_max(self):
+        '''Make a heatmap plot of max mmolH in each well'''
+        import matplotlib as mpl
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+        plt.figure()
+
+        ncols, nrows = self.plate.ncols, len(self.mmolH) // self.plate.ncols
+        im = plt.imshow(np.max(self.mmolH, axis=1).reshape(nrows, ncols), origin='upper')
+        plt.xlabel('columns')
+        plt.ylabel('rows')
+
+        ax = plt.gca()
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+
+        plt.clim(0, 30)
+        plt.colorbar(cax=cax, ax=ax)
+
+        plt.tight_layout()
+        return plt.gcf(), plt.gca()
 
 
     def plot_mmolH_max_contourf(self):
+        '''Plot maxH as a contour plot.'''
         ncols, nrows = self.plate.ncols, len(self.mmolH) // self.plate.ncols
         mmolH = np.max(self.mmolH, axis=1).reshape(nrows, ncols)
         p = plt.contourf(self.plate.A.reshape(nrows, ncols),
@@ -147,12 +286,10 @@ class mmolH:
         plt.ylabel(f'{self.plate.metalA} (mM)')
         return p
 
-    # TODO Other properties we might derive:
-    # Rate, max rate, etc.
-
 
     def show_plate(self, i):
         '''Show an image of the plate at the ith timestep.
+
         I is normally an integer, but it can also be a slice.
         p.show_plate(slice(0, 3)) to show the first three images.
 
