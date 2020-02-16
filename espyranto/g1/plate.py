@@ -241,7 +241,7 @@ class Plate:
                    caption=f'Scatter plot for maximum hydrogen produced for {A}-{B}.')
             print()
 
-            headline('Max rate', level=2, todo='TODO')
+            headline('Max rate', level=2)
 
             print()
             self.data['mmolH'].plot_mmolH_max_derivative_spline()
