@@ -267,11 +267,12 @@ class mmolH:
         plt.xlabel('columns')
         plt.ylabel('rows')
 
+        # This makes the colorbar the same size as the plot
         ax = plt.gca()
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
 
-        plt.clim(0, 30)
+        plt.clim(0, 60)
         plt.colorbar(cax=cax, ax=ax)
 
         plt.tight_layout()
