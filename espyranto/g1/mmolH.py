@@ -175,6 +175,7 @@ class mmolH:
 
         The data points are shown as dots. A smoothed spline goes through them.
         A dot shows where the maximum derivative is.
+        A square shows the maximum produced.
 
         See `get_smoothed_data_derivative' for the meanings of s, N.
 
@@ -200,6 +201,9 @@ class mmolH:
                 axes[row, col].plot(xs, ys, 'k-')
                 # here is the max rate
                 axes[row, col].plot(xs[imax], ys[imax], 'bo')
+                # here is the max production
+                imax = np.argmax(ys)
+                axes[row, col].plot(xs[imax], ys[imax], 'gs')
 
         # Row labels
         for row in range(nrows):
