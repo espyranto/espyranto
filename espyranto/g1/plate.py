@@ -17,7 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import re
 from ase.data import chemical_symbols
-from pycse.orgmode import table, figure, headline, print_redirect
+from pycse.orgmode import table, figure, headline, print_redirect, link
 
 import importlib
 import pkgutil
@@ -42,10 +42,13 @@ class Plate:
         self.data is a dictionary if there are any datamodules defined.
 
         '''
+        # we don't want the directory to end with / because it messes up the
+        # split next.
         if directory.endswith('/'):
             directory = directory[:-1]
 
-        base, directory = os.path.split(directory)
+        # We make sure to expand directory, in case it is something like . or ..
+        base, directory = os.path.split(os.path.abspath(directory))
 
         self.base = base
         self.directory = directory
@@ -113,48 +116,6 @@ class Plate:
         s = f'{self.metadata["A"]}-{self.metadata["B"]} plate'
         return s
 
-    # TODO: almost everything below here should probably be abstracted out
-
-    # @property
-    # def org(self):
-    #     '''Create report.org TODO: still not sure what the best thing to do here is.
-
-    #     This goes to a file called report.org in the current working directory.
-    #     It might be nice to just print to output in an org file though.
-
-    #     Just accessing the attribute will create the report.
-    #     p = Plate()
-    #     p.org
-
-    #     in org-mode this still puts images in the org-file, which is not so
-    #     desirable. It might be better to run this as a shell command in a plate
-    #     directory:
-
-    #     python -m espyranto.g1.plate org
-
-    #     '''
-    #     with print_redirect('report.org'):
-    #         print(f'#+TITLE: {self.directory}')
-
-    #         headline('Metadata')
-    #         print(self.metadata['parameters'])
-
-    #         headline('Kinetics')
-    #         plt.figure()
-    #         self.plot_mmolH_grid()
-    #         figure(os.path.join(self.base, self.directory,
-    #                             'report-images', 'grid.png'),
-    #                caption='Grid plot of hydrogen production.',
-    #                name='fig-grid-kinetics')
-
-    #         headline('Max umolH')
-    #         plt.figure()
-    #         self.plot_mmolH_max()
-    #         figure(os.path.join(self.base, self.directory,
-    #                             'report-images', 'maxh.png'),
-    #                caption='Maximum hydrogen production.',
-    #                name='fig-maxH')
-
 
     def __getitem__(self, index):
         '''get self[index]
@@ -182,6 +143,161 @@ class Plate:
                 'A': self.A[index],
                 'B': self.B[index],
                 'data': {d: self.data[d][index] for d in self.data}}
+
+
+    @property
+    def org(self):
+        '''Print an org-represention of the plate and data.
+
+        '''
+        import datetime
+        import json
+        import time
+
+        ts = time.time()
+        st = datetime.datetime.fromtimestamp(ts).strftime('[%Y-%m-%d %s %H:%M:%S]')
+
+        CWD = os.getcwd()
+        os.chdir(os.path.join(self.base,
+                              self.directory))
+
+        try:
+            import matplotlib
+            matplotlib.use('TkAgg')
+            A, B = self.metadata['A'], self.metadata['B']
+
+
+            print(f'#+TITLE: {A}-{B}')
+            print(f'#+CREATED: {st}')
+            print('#+STARTUP: showall')
+            print()
+            headline('Summary',
+                     tags=[A, B],
+                     body=str(self))
+
+            link('file+sys', f'./primary_data/{A}col{B}rowdata.xls')
+
+            link('file+sys', './images', 'Image directory')
+
+            link('file+sys', './auxillary_data', 'auxillary_data')
+
+            print()
+            headline('Hydrogen data')
+            headline('Hydrogen production plots', level=2)
+
+            plt.figure()
+
+            self.data['mmolH'].plot_mmolH_grid_spline()
+            plt.tight_layout()
+            figure('espyranto/kinetics-grid.png',
+                   name='fig-kinetics-grid',
+                   attributes=[['org', ':width 600']],
+                   caption=f'Hydrogen umolH in each well for {A}-{B}.')
+            plt.clf()
+            print()
+
+            headline('Max production', level=2)
+
+            ncols, nrows = self.ncols, len(self.data['mmolH'].mmolH) // self.ncols
+            maxh = np.max(self.data['mmolH'].mmolH, axis=1).reshape(nrows, ncols)
+
+            data = np.round(maxh, 2)
+            # Add row and column labels
+            col_labels = self.A.reshape(nrows, ncols)[0][None, :]
+            row_labels = np.concatenate(([['']],
+                                         self.B.reshape(nrows, ncols)[:, 0][:, None]))
+            data = np.concatenate((col_labels, data))
+            data = np.concatenate((row_labels, data), axis=1)
+            data = list(data)
+            data.insert(1, None)
+            data[0][0] = f'{B}\{A}'
+
+            table(data, name='tab-maxh', caption='Maxh µmol H_{2} produced.')
+            print()
+
+            self.data['mmolH'].plot_mmolH_max();
+            plt.tight_layout()
+            figure('espyranto/maxh.png',
+                   name='fig-maxh',
+                   attributes=[['org', ':width 600']],
+                   caption=f'Maximum hydrogen produced for {A}-{B}.')
+            plt.clf()
+            print()
+
+            tot_conc = (self.A + self.B)
+
+            # The nself.where deals with the case where A = B = 0.0
+            x_A = self.A / np.where(tot_conc > 0, tot_conc, 1)
+
+            plt.figure()
+            plt.scatter(x_A, np.max(self.data['mmolH'].mmolH, axis=1),
+                        tot_conc * 20)
+            plt.xlabel(f'$x_{{{A}}}$');
+            plt.ylabel('$\mu molH$');
+            print()
+            figure('espyranto/maxh-scatter.png',
+                   name='fig-maxh',
+                   attributes=[['org', ':width 600']],
+                   caption=f'Scatter plot for maximum hydrogen produced for {A}-{B}.')
+            print()
+
+            headline('Max rate', level=2, todo='TODO')
+
+            print()
+            self.data['mmolH'].plot_mmolH_max_derivative_spline()
+            figure('espyranto/maxrate.png',
+                   name='fig-maxrate',
+                   attributes=[['org', ':width 600']],
+                   caption=f'Maximum rate (spline) of hydrogen produced for {A}-{B}.')
+
+
+            print()
+            mmolH = self.data['mmolH']
+            t = np.arange(0, len(mmolH[0])) * mmolH.timestep / 3600
+            rate_data = []
+            for row in self.data['mmolH'].mmolH:
+                xs, ys, dydx = mmolH.get_smoothed_data_derivative(t, row)
+                rate_data += [np.max(dydx)]
+
+
+            # Scatter plot
+            plt.figure()
+            plt.scatter(x_A, rate_data, tot_conc * 20)
+            plt.xlabel(f'$x_{{{A}}}$');
+            plt.ylabel('$\mu molH/hr$');
+            print()
+            figure('espyranto/maxrate-scatter.png',
+                   name='fig-maxrate',
+                   attributes=[['org', ':width 600']],
+                   caption=f'Scatter plot for maximum rate of hydrogen production for {A}-{B}.')
+            print()
+
+
+            # For making a table
+            rate_data = np.round(rate_data, 2)
+            rate_data = rate_data.reshape((nrows, ncols))
+            rate_data = np.concatenate((col_labels, rate_data))
+            rate_data = np.concatenate((row_labels, rate_data), axis=1)
+            rate_data = list(rate_data)
+            rate_data.insert(1, None)
+            rate_data[0][0] = f'{B}\{A}'
+
+            table(rate_data, name='tab-maxrate', caption='Max rate µmol/hr H_{2} produced.')
+            print()
+
+            headline('Metadata')
+            print()
+            print(f'''#+name: metadata
+#+BEGIN_SRC json
+{json.dumps(self.metadata)}
+#+END_SRC
+
+''')
+
+        finally:
+            os.chdir(CWD)
+            plt.close('all')
+
 
 
 
