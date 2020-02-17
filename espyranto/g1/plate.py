@@ -237,7 +237,7 @@ class Plate:
             plt.ylabel('$\mu molH$');
             print()
             figure('espyranto/maxh-scatter.png',
-                   name='fig-maxh',
+                   name='fig-maxh-scatter',
                    attributes=[['org', ':width 600']],
                    caption=f'Scatter plot for maximum hydrogen produced for {A}-{B}.')
             print()
@@ -268,7 +268,7 @@ class Plate:
             plt.ylabel('$\mu molH/hr$');
             print()
             figure('espyranto/maxrate-scatter.png',
-                   name='fig-maxrate',
+                   name='fig-maxrate-scatter',
                    attributes=[['org', ':width 600']],
                    caption=f'Scatter plot for maximum rate of hydrogen production for {A}-{B}.')
             print()
@@ -290,7 +290,7 @@ class Plate:
             print()
             print(f'''#+name: metadata
 #+BEGIN_SRC json
-{json.dumps(self.metadata)}
+{json.dumps(self.metadata, sort_keys=True, indent=2)}
 #+END_SRC
 
 ''')
