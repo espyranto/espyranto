@@ -315,6 +315,27 @@ class mmolH:
                 axes[j].imshow(mpimg.imread(self.images[inds[j]][0]))
             return f, axes
 
+    def slideshow(self, cache=True):
+        from IPython.display import Image, display
+        from IPython.html.widgets import interact
+
+        if cache=False:
+            images = [Image(open(f,'rb').read(), width=800)
+                      for f, dt in self.images]
+        else:
+            images = [None for f, dt in self.images]
+
+        def display_image(k):
+            if cache:
+                if images[k] is None:
+                    f = self.plate.data['mmolH'].images[k][0]
+                    img = Image(open(f,'rb').read(), width=800)
+                    images[k] = img
+
+            display(images[k])
+
+        return interact(display_image, k=(0, len(p.data['mmolH'].images)-1))
+
 
     # def movie_ffmpeg(self):
     #     '''Generate and play a movie using ffmpeg.
