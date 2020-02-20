@@ -17,7 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import re
 from ase.data import chemical_symbols
-from pycse.orgmode import table, figure, headline, print_redirect, link
+
 
 import importlib
 import pkgutil
@@ -150,6 +150,7 @@ class Plate:
         '''Print an org-represention of the plate and data.
 
         '''
+        from pycse.orgmode import table, figure, headline, print_redirect, link
         import datetime
         import json
         import time
