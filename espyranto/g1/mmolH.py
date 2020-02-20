@@ -317,7 +317,7 @@ class mmolH:
 
     def slideshow(self, cache=True):
         from IPython.display import Image, display
-        from IPython.notebook.widgets import interact
+        from ipywidgets import interact
 
         if cache == False:
             images = [Image(open(f,'rb').read(), width=800)
