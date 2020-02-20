@@ -334,7 +334,7 @@ class mmolH:
 
             display(images[k])
 
-        return interact(display_image, k=(0, len(p.data['mmolH'].images)-1))
+        return interact(display_image, k=(0, len(self.images) - 1))
 
 
     # def movie_ffmpeg(self):
