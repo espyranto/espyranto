@@ -319,7 +319,7 @@ class mmolH:
         from IPython.display import Image, display
         from IPython.html.widgets import interact
 
-        if cache=False:
+        if cache == False:
             images = [Image(open(f,'rb').read(), width=800)
                       for f, dt in self.images]
         else:
