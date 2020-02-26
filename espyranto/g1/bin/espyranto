@@ -7,7 +7,7 @@ import sys
 import numpy as np
 
 import matplotlib
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 
 import matplotlib.pyplot as plt
 
@@ -24,6 +24,9 @@ parser.add_argument('--org', action='store_true',
 
 parser.add_argument('--debug', action='store_true',
                     help='turn debugging on')
+
+parser.add_argument('--view-plates', action='store_true',
+                    help='show plate widget')
 
 parser.add_argument('dir', nargs='*', default=[os.getcwd()])
 
@@ -55,3 +58,45 @@ if args.org:
 # Other ideas?
 # Add directory, commit and push?
 # validate
+
+if args.view_plates:
+    for d in args.dir:
+        p = Plate(d)
+        mmolh = p.data['mmolH']
+        from matplotlib.widgets import Slider
+        from PIL import Image
+
+        fig, ax = plt.subplots()
+        fig.i = 0
+
+        ax.imshow(Image.open(mmolh.images[0][0]))
+
+        slider_ax = plt.axes([0.1, 0.05, 0.8, 0.05])
+
+        slider = Slider(slider_ax,      # the axes object containing the slider
+                        'i',            # the name of the slider parameter
+                        0,          # minimal value of the parameter
+                        len(mmolh.images) - 1,
+                        valinit=0,  # initial value of the parameter
+                        valfmt='%d')
+
+        def update(i):
+            i = int(i)
+            ax.set_title(f'{i}')
+            img = Image.open(mmolh.images[i][0])
+            ax.imshow(img)
+            fig.i = i
+            fig.canvas.draw_idle()          # redraw the plot
+
+        def press(event):
+            sys.stdout.flush()
+            if event.key == 'left':
+                slider.set_val(fig.i - 1)
+            elif event.key == 'right':
+                slider.set_val(fig.i + 1)
+
+            fig.canvas.draw()
+
+        fig.canvas.mpl_connect('key_press_event', press)
+        slider.on_changed(update)
+        plt.show()
