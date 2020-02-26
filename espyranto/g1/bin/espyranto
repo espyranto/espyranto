@@ -81,6 +81,7 @@ if args.view_plates:
                         valfmt='%d')
 
         def update(i):
+            '''This runs when you move the slider'''
             i = int(i)
             ax.set_title(f'{i}')
             img = Image.open(mmolh.images[i][0])
@@ -89,11 +90,16 @@ if args.view_plates:
             fig.canvas.draw_idle()          # redraw the plot
 
         def press(event):
+            '''This runs when you press a key. it makes arrow keys work.'''
             sys.stdout.flush()
             if event.key == 'left':
                 slider.set_val(fig.i - 1)
             elif event.key == 'right':
                 slider.set_val(fig.i + 1)
+            elif event.key == 'up':
+                slider.set_val(fig.i + 10)
+            elif event.key == 'down':
+                slider.set_val(fig.i - 10)
 
             fig.canvas.draw()
 
