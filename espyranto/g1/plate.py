@@ -189,7 +189,7 @@ class Plate:
 
             plt.figure()
 
-            self.data['mmolH'].plot_mmolH_grid_spline()
+            self.data['mmolH'].plot_mmolH_grid_window()
             plt.tight_layout()
             figure('espyranto/kinetics-grid.png',
                    name='fig-kinetics-grid',
@@ -245,20 +245,23 @@ class Plate:
 
             headline('Max rate', level=2)
 
+            # Heatmap of max rates
             print()
-            self.data['mmolH'].plot_mmolH_max_derivative_spline()
+            self.data['mmolH'].plot_mmolH_max_derivative_window()
             figure('espyranto/maxrate.png',
                    name='fig-maxrate',
                    attributes=[['org', ':width 600']],
-                   caption=f'Maximum rate (spline) of hydrogen produced for {A}-{B}.')
+                   caption=f'Maximum rate (window) of hydrogen produced for {A}-{B}.')
 
 
+            # Scatter plot
             print()
             mmolH = self.data['mmolH']
             t = np.arange(0, len(mmolH[0])) * mmolH.timestep / 3600
             rate_data = []
             for row in self.data['mmolH'].mmolH:
-                xs, ys, dydx = mmolH.get_smoothed_data_derivative(t, row)
+                ys = mmolH.smooth_window(row)
+                dydx = np.gradient(ys, t, edge_order=2)
                 rate_data += [np.max(dydx)]
 
 

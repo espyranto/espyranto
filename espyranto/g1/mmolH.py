@@ -216,7 +216,6 @@ class mmolH:
         fig.tight_layout()
         return fig, axes
 
-
     def plot_mmolH_max_derivative_spline(self, s=4, N=None):
         '''Make a heatmap plot of max derivative in each well.
 
@@ -240,6 +239,125 @@ class mmolH:
 
         ncols, nrows = self.plate.ncols, len(self.mmolH) // self.plate.ncols
         im = plt.imshow(max_derivatives.reshape(nrows, ncols), origin='upper')
+        plt.xlabel('columns')
+        plt.ylabel('rows')
+        plt.title('Max rate (spline)')
+
+        ax = plt.gca()
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+
+        plt.colorbar(cax=cax, ax=ax)
+
+        plt.tight_layout()
+
+        return plt.gcf(), plt.gca()
+
+    #### Window smoothing
+
+    def smooth_window(self, y, N=11, method='flat', *args):
+        '''Smooth y with a window of N points.
+        Smoothing is done by convolution.
+        y is reflected before and after to reduce edge effects.'''
+
+        if method == 'flat':
+            window = np.ones(N, 'd')
+        else:
+            window_f = np.__dict__[method]
+            window = window_f(N, *args)
+
+        window /= window.sum()  # normalizes the weights
+        yr = y[::-1]  # reversed version of y to reflect it before and after.
+
+        # Make reflections to eliminate edge effects at start and end
+        s=np.r_[yr, y, yr]
+        y_smooth = np.convolve(window, s, mode='same')
+        ys = y_smooth[len(y):2*len(y)]
+        return ys
+
+
+    def plot_mmolH_grid_window(self, N=11, method='flat', *args):
+        '''Make a grid-plot of the mmolH data.
+
+        The data points are shown as dots. A smoothed curve goes through them.
+        A dot shows where the maximum derivative is.
+        A square shows the maximum produced.
+
+        Returns: figure and axes of plot.
+        '''
+
+        ncols, nrows = self.plate.ncols, len(self.mmolH) // self.plate.ncols
+
+        fig, axes = plt.subplots(nrows, ncols, sharex='all', sharey='all',
+                                 figsize=(nrows, ncols))
+
+        # I wish we could get this in the image somewhere, but this doesn't put
+        # it at the top like I want.
+
+       # title = f'Smoothing method: {method} window size={N}'
+       # if args:
+       #     title += f'args=({args})'
+       # plt.title(title)
+
+        t = np.arange(0, self.mmolH.shape[1]) * self.timestep / 3600
+
+        for row in range(nrows):
+            for col in range(ncols):
+                ind = row * ncols + col
+
+                x = t
+                ys = self.smooth_window(self.mmolH[ind], N, method, *args)
+
+                dydx = np.gradient(ys, x)
+                imax = np.argmax(dydx)
+                axes[row, col].plot(t, self.mmolH[ind], 'r.', ms=2)
+                # smoothed data
+                axes[row, col].plot(x, ys, 'k-')
+                # here is the max rate
+                axes[row, col].plot(x[imax], ys[imax], 'bo')
+                # here is the max production
+                imax = np.argmax(ys)
+                axes[row, col].plot(x[imax], ys[imax], 'gs')
+
+        # Row labels
+        for row in range(nrows):
+            axes[row, 0].set_ylabel(f'{row}', rotation=0, size='large')
+
+        # Column labels
+        for col in range(ncols):
+            axes[0, col].set_title(f'{col}')
+
+        fig.tight_layout()
+        return fig, axes
+
+    def get_mmolH_max_derivative_window_array(self, N=11, method='flat', *args):
+        '''Get array for max derivative in each well.
+
+        The rates are from derivatives of a smoothed spline.
+        '''
+        t = np.arange(0, self.mmolH.shape[1]) * self.timestep / 3600
+        max_derivatives = []
+        for row in self.mmolH:
+            ys = self.smooth_window(row, N, method, *args)
+            max_derivatives += [np.max(np.gradient(ys, t, edge_order=2))]
+
+        max_derivatives = np.array(max_derivatives)
+        ncols, nrows = self.plate.ncols, len(self.mmolH) // self.plate.ncols
+
+        return max_derivatives.reshape(nrows, ncols)
+
+
+    def plot_mmolH_max_derivative_window(self, N=11, method='flat', *args):
+        '''plot heat meap.
+
+        '''
+        import matplotlib as mpl
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+        plt.figure()
+
+        max_derivatives = self.get_mmolH_max_derivative_window_array()
+        im = plt.imshow(max_derivatives, origin='upper')
         plt.xlabel('columns')
         plt.ylabel('rows')
         plt.title('Max rate (spline)')
