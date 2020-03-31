@@ -3,11 +3,19 @@
 Data is read by plugins that define how to get data. see umolH.py.
 '''
 
+from datetime import datetime
+import glob
+import os
+import operator
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import glob
-import os
+import re
+from ase.data import chemical_symbols
+from pycse.orgmode import table, figure, headline, print_redirect
+
+import importlib
+import pkgutil
 
 class Plate:
     
@@ -22,6 +30,7 @@ class Plate:
         
         self.A, self.B, self.PS, self.TEOA, self.DMSO are calculated from the 
         input robot files'''
+        print('init in plate')
         
         if directory.endswith('/'):
             directory = directory [:-1]
@@ -47,9 +56,16 @@ class Plate:
         concs = df_para['Stock Conc (mM)'].dropna().values 
         self.metadata = dict(zip(df_para['Parameters'].values,df_para['Unnamed: 1'].values))
 
+        self.nrows = len(solutions) // self.ncols
+        ce = '|'.join(chemical_symbols)
+
+        m = re.search(f'({ce})col({ce})row(.*)', directory)
+        A, B, tag = m.groups()
         
-        self.metalA = solutions[0]
-        self.metalB = solutions[1]
+        # These should probably be removed.
+        self.metalA = A
+        self.metalB = B
+        self.tag = tag
 
         #Calculate the volumes and concentrations of all components from the input files
         xls_file = glob.glob(f'{base}/{directory}/input/*.xls')
@@ -64,15 +80,22 @@ class Plate:
         total_volumes = np.sum(volumes,axis = 1)  #sum each row(well)
         
         #Calculate conc by multiplying the vol*conc/total volume in parameters
-        concentrations = volumes * concs[None,:]/total_volumes [:,None]
+        concentrations= volumes * concs[None,:]/total_volumes [:,None]
         
         self.nrows = len(concentrations)//ncols
         
-        self.A = concentrations[:][0]
-        self.B = concentrations[:][1]
-        self.PS = concentrations [:][2]
-        self.TEOA = concentrations [:][3]
-        self.DMSO = concentrations [:][4]
+        self.A = np.transpose(concentrations[:,0].reshape(self.ncols,self.nrows)).flatten()
+        self.B = np.transpose(concentrations[:,1].reshape(self.ncols,self.nrows)).flatten()
+        self.PS = np.transpose(concentrations[:,2].reshape(self.ncols,self.nrows)).flatten()
+        self.TEOA = np.transpose(concentrations[:,3].reshape(self.ncols,self.nrows)).flatten()
+        self.DMSO = np.transpose(concentrations[:,0].reshape(self.ncols,self.nrows)).flatten()
+        # This is where the separation should occur. Below here is data specific.
+        #self.data = {mod.name: mod for mod in
+        #             [module(self) for module in self.datamodules]}
+        self.data = {}
+        for module in self.datamodules:
+            mod = module(self)  # This is an instance
+            self.data[mod.name] = mod
         
         
     def __str__(self):
