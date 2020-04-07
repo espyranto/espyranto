@@ -38,7 +38,8 @@ class umolH:
         #These are the timestamps for which the images were taken but they are 
         #not the same as reaction times because the reactor is not
         #illuminated by blue light while taking the image.
-        dates = [datetime.strptime(os.path.split(f)[-1], '*A_y%ym%md%dH%HM%MS%S.jpg') for f in image_files]
+        prefix = os.path.split(image_files[0])[-1].split('A_')[0]
+        dates = [datetime.strptime(os.path.split(f)[-1], f'{prefix}A_y%ym%md%dH%HM%MS%S.jpg') for f in image_files]
         
         #This is a sorted list of tuples(filename,datetime) for each image
         self.images = sorted(zip(image_files,dates),key=operator.itemgetter(1))
