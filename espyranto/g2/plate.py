@@ -30,7 +30,6 @@ class Plate:
         
         self.A, self.B, self.PS, self.TEOA, self.DMSO are calculated from the 
         input robot files'''
-        print('init in plate')
         
         if directory.endswith('/'):
             directory = directory [:-1]

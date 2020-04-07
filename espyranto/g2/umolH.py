@@ -13,7 +13,6 @@ import json
 class umolH:
     
     def __init__(self,plate):
-        print('init in umolH')
         self.name = 'umolH'  #you need this so you know what data you have.
         self.plate = plate 
         
@@ -39,7 +38,7 @@ class umolH:
         #These are the timestamps for which the images were taken but they are 
         #not the same as reaction times because the reactor is not
         #illuminated by blue light while taking the image.
-        dates = [datetime.strptime(os.path.split(f)[-1], f'{plate.directory}A_y%ym%md%dH%HM%MS%S.jpg') for f in image_files]
+        dates = [datetime.strptime(os.path.split(f)[-1], '*A_y%ym%md%dH%HM%MS%S.jpg') for f in image_files]
         
         #This is a sorted list of tuples(filename,datetime) for each image
         self.images = sorted(zip(image_files,dates),key=operator.itemgetter(1))
