@@ -53,7 +53,7 @@ class Plate:
         
         
         #extract metadata and solution components from the Parameters file
-        self.df_para = pd.read_excel(f1)
+        self.df_para = pd.read_excel(f1, engine = 'openpyxl')
         self.solutions = self.df_para['Solutions'].dropna().values
         concs =self.df_para['Stock Conc (mM)'].dropna().values 
         self.metadata = dict(zip(self.df_para['Parameters'].values,self.df_para['Unnamed: 1'].values))
@@ -79,7 +79,7 @@ class Plate:
         for i,label in enumerate(self.solutions):
             for file in xls_file:
                 if file.endswith(f'{label}.xls'):
-                    vols = pd.read_excel(file)['Volume']
+                    vols = pd.read_excel(file, engine = 'openpyxl')['Volume']
                     volumes[:,i] = vols
         
         #Check to see if the calculated volumes sum to volumes stated in metadata
